@@ -1,4 +1,5 @@
 from collections import defaultdict
+
 from tba_api import get_district_events, get_event_points, get_district_teams
 from utils import (
     is_demo_team,
@@ -28,13 +29,14 @@ def get_clean_event_points(event_key):
     }
 
 
+def get_dcmp_count_from_district(district):
+    return district.get("official_advancement_counts", {}).get("dcmp", 0)
+
+
 def simulate_district_pre_dcmp(year, district):
     district_key = district["key"]
     district_name = district.get("display_name", district_key)
-
-    dcmp_count = district.get(
-        "official_advancement_counts", {}
-    ).get("dcmp", 0)
+    dcmp_count = get_dcmp_count_from_district(district)
 
     events = get_district_events(district_key)
     district_teams = get_clean_district_teams(district_key)

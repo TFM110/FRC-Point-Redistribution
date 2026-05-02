@@ -18,14 +18,14 @@ def get_districts(year):
 def get_year_events(year):
     return sorted(
         get(f"/events/{year}"),
-        key=lambda e: e.get("start_date", "")
+        key=lambda event: event.get("start_date", "")
     )
 
 
 def get_district_events(district_key):
     return sorted(
         get(f"/district/{district_key}/events"),
-        key=lambda e: e.get("start_date", "")
+        key=lambda event: event.get("start_date", "")
     )
 
 
@@ -40,7 +40,3 @@ def get_district_teams(district_key):
 
 def get_event_teams(event_key):
     return get(f"/event/{event_key}/teams")
-
-
-def get_team_districts(team_key):
-    return get(f"/team/{team_key}/districts")

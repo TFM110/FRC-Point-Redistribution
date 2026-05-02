@@ -87,46 +87,33 @@ def write_table_block(worksheet, workbook, df, title, subtitle, start_row, start
     start_data_row = start_row + 3
     end_data_row = start_data_row + len(df) - 1
 
-    if "Change Points" in df.columns:
-        col = start_col + df.columns.get_loc("Change Points")
-        worksheet.conditional_format(
-            start_data_row,
-            col,
-            end_data_row,
-            col,
-            {
-                "type": "3_color_scale",
-                "min_type": "min",
-                "min_color": "#F8696B",
-                "mid_type": "num",
-                "mid_value": 0,
-                "mid_color": "#FFFFFF",
-                "max_type": "max",
-                "max_color": "#63BE7B"
-            }
-        )
+    for column_name in ["Change Points", "Change Rank"]:
+        if column_name in df.columns:
+            col = start_col + df.columns.get_loc(column_name)
 
-    if "Change Rank" in df.columns:
-        col = start_col + df.columns.get_loc("Change Rank")
-        worksheet.conditional_format(
-            start_data_row,
-            col,
-            end_data_row,
-            col,
-            {
-                "type": "3_color_scale",
-                "min_type": "min",
-                "min_color": "#F8696B",
-                "mid_type": "num",
-                "mid_value": 0,
-                "mid_color": "#FFFFFF",
-                "max_type": "max",
-                "max_color": "#63BE7B"
-            }
-        )
+            worksheet.conditional_format(
+                start_data_row,
+                col,
+                end_data_row,
+                col,
+                {
+                    "type": "3_color_scale",
+                    "min_type": "min",
+                    "min_color": "#F8696B",
+                    "mid_type": "num",
+                    "mid_value": 0,
+                    "mid_color": "#FFFFFF",
+                    "max_type": "max",
+                    "max_color": "#63BE7B"
+                }
+            )
 
     worksheet.set_column(start_col, start_col + len(df.columns) - 2, 16)
-    worksheet.set_column(start_col + len(df.columns) - 1, start_col + len(df.columns) - 1, 60)
+    worksheet.set_column(
+        start_col + len(df.columns) - 1,
+        start_col + len(df.columns) - 1,
+        60
+    )
 
     return end_data_row + 2
 

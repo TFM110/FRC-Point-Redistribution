@@ -1,30 +1,42 @@
 from collections import defaultdict
-from tba_api import get_year_events, get_event_points, get_team_districts
+from tqdm import tqdm
+
+from tba_api import (
+    get_year_events,
+    get_event_points,
+    get_districts,
+    get_district_teams
+)
+
 from utils import (
     is_demo_team,
     clean_team_number,
     calculate_bonus,
     is_regional_event,
-    regional_slots
+    regional_slots,
+    should_skip_district
 )
 
-TEAM_DISTRICT_CACHE = {}
 
+def get_all_district_teams_for_year(year):
+    district_teams = set()
 
-def team_has_district(team_key, year):
-    cache_key = (team_key, year)
+    districts = [
+        district for district in get_districts(year)
+        if not should_skip_district(district)
+    ]
 
-    if cache_key in TEAM_DISTRICT_CACHE:
-        return TEAM_DISTRICT_CACHE[cache_key]
+    for district in tqdm(
+        districts,
+        desc=f"{year} regional model: loading district teams",
+        unit="district",
+        leave=False
+    ):
+        for team in get_district_teams(district["key"]):
+            if not is_demo_team(team["key"]):
+                district_teams.add(team["key"])
 
-    try:
-        districts = get_team_districts(team_key)
-        has_district = any(d.get("year") == year for d in districts)
-    except Exception:
-        has_district = False
-
-    TEAM_DISTRICT_CACHE[cache_key] = has_district
-    return has_district
+    return district_teams
 
 
 def get_clean_event_points(event_key):
@@ -37,8 +49,10 @@ def get_clean_event_points(event_key):
     }
 
 
-def simulate_regionals_2026():
-    year = 2026
+def simulate_regionals_for_year(year):
+    print(f"  Running {year} regional model...")
+
+    district_team_set = get_all_district_teams_for_year(year)
 
     events = [
         event for event in get_year_events(year)
@@ -54,7 +68,12 @@ def simulate_regionals_2026():
 
     event_rows = []
 
-    for event in events:
+    for event in tqdm(
+        events,
+        desc=f"{year} regionals",
+        unit="event",
+        leave=False
+    ):
         event_key = event["key"]
         event_name = event.get("name", event_key)
 
@@ -71,7 +90,7 @@ def simulate_regionals_2026():
         for team_key, point_data in points.items():
             earned_points = point_data.get("total", 0)
 
-            if team_has_district(team_key, year):
+            if team_key in district_team_set:
                 non_point_teams.append(team_key)
                 non_counting_events[team_key].append(
                     f"{event_name} ({earned_points} district team at regional)"
@@ -91,7 +110,7 @@ def simulate_regionals_2026():
 
         eligible_teams = [
             team for team in points.keys()
-            if not team_has_district(team, year)
+            if team not in district_team_set
             and team_play_count[team] <= 2
             and team not in non_point_teams
         ]
@@ -107,7 +126,7 @@ def simulate_regionals_2026():
 
             reason = (
                 "district team at regional"
-                if team_has_district(non_point_team, year)
+                if non_point_team in district_team_set
                 else "3rd+ regional"
             )
 
@@ -120,7 +139,7 @@ def simulate_regionals_2026():
 
         regional_teams_at_event = [
             team for team in points.keys()
-            if not team_has_district(team, year)
+            if team not in district_team_set
         ]
 
         original_event_ranked = sorted(
@@ -145,8 +164,12 @@ def simulate_regionals_2026():
             "Event Key": event_key,
             "Country": event.get("country", ""),
             "Auto Slots": slots,
-            "Original Auto Qualifiers": ", ".join(clean_team_number(t) for t in original_auto),
-            "Distributed Auto Qualifiers": ", ".join(clean_team_number(t) for t in distributed_auto),
+            "Original Auto Qualifiers": ", ".join(
+                clean_team_number(team) for team in original_auto
+            ),
+            "Distributed Auto Qualifiers": ", ".join(
+                clean_team_number(team) for team in distributed_auto
+            ),
             "Changed?": "Yes" if set(original_auto) != set(distributed_auto) else "No"
         })
 
@@ -177,7 +200,7 @@ def simulate_regionals_2026():
         for rank, team in enumerate(distributed_sorted)
     }
 
-    team_rows = []
+    rows = []
 
     max_rank_gain = 0
     max_rank_loss = 0
@@ -197,9 +220,11 @@ def simulate_regionals_2026():
             event_notes.append("Extra: " + "; ".join(extra_events[team]))
 
         if non_counting_events[team]:
-            event_notes.append("Non-counting: " + "; ".join(non_counting_events[team]))
+            event_notes.append(
+                "Non-counting: " + "; ".join(non_counting_events[team])
+            )
 
-        team_rows.append({
+        rows.append({
             "Team": clean_team_number(team),
             "Original Points": original_points[team],
             "OP Rank": original_rank[team],
@@ -212,9 +237,9 @@ def simulate_regionals_2026():
 
     summary = {
         "System": "Regional",
-        "Year": 2026,
+        "Year": year,
         "Group": "Regional Pool",
-        "Key": "2026regional",
+        "Key": f"{year}regional",
         "Actual Advancement Count": "",
         "Teams Gained Spot": "",
         "Teams Lost Spot": "",
@@ -227,4 +252,4 @@ def simulate_regionals_2026():
         )
     }
 
-    return team_rows, event_rows, summary
+    return rows, event_rows, summary
