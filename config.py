@@ -10,6 +10,7 @@ START_YEAR = 2009
 
 now = datetime.now()
 
+# FRC season ends in April
 if now.month < 5:
     END_YEAR = now.year - 1
 else:
@@ -17,9 +18,11 @@ else:
 
 SKIP_YEARS = {2020, 2021}
 
+# Regional point system begins in 2026
 REGIONAL_START_YEAR = 2026
 
-RUN_SINGLE_YEAR = False
+# Faster for testing
+RUN_SINGLE_YEAR = True
 TARGET_YEAR = 2026
 
 OUTPUT_FILE = "frc_district_and_regional_redistribution.xlsx"

@@ -5,7 +5,8 @@ from utils import (
     is_demo_team,
     clean_team_number,
     calculate_bonus,
-    is_dcmp_event
+    is_dcmp_event,
+    team_number
 )
 
 
@@ -33,6 +34,48 @@ def get_dcmp_count_from_district(district):
     return district.get("official_advancement_counts", {}).get("dcmp", 0)
 
 
+def make_district_tiebreakers():
+    return defaultdict(lambda: {
+        "total_elim": 0,
+        "best_elim": 0,
+        "total_alliance": 0,
+        "best_alliance": 0,
+        "total_qual": 0
+    })
+
+
+def update_district_tiebreakers(tiebreakers, team_key, point_data):
+    qual = point_data.get("qual_points", 0)
+    elim = point_data.get("elim_points", 0)
+    alliance = point_data.get("alliance_points", 0)
+
+    tiebreakers[team_key]["total_elim"] += elim
+    tiebreakers[team_key]["best_elim"] = max(
+        tiebreakers[team_key]["best_elim"],
+        elim
+    )
+
+    tiebreakers[team_key]["total_alliance"] += alliance
+    tiebreakers[team_key]["best_alliance"] = max(
+        tiebreakers[team_key]["best_alliance"],
+        alliance
+    )
+
+    tiebreakers[team_key]["total_qual"] += qual
+
+
+def district_sort_key(team_key, total_points, tiebreakers):
+    return (
+        -total_points[team_key],
+        -tiebreakers[team_key]["total_elim"],
+        -tiebreakers[team_key]["best_elim"],
+        -tiebreakers[team_key]["total_alliance"],
+        -tiebreakers[team_key]["best_alliance"],
+        -tiebreakers[team_key]["total_qual"],
+        team_number(team_key)
+    )
+
+
 def simulate_district_pre_dcmp(year, district):
     district_key = district["key"]
     district_name = district.get("display_name", district_key)
@@ -44,6 +87,9 @@ def simulate_district_pre_dcmp(year, district):
     team_play_count = defaultdict(int)
     original_points = defaultdict(int)
     distributed_points = defaultdict(int)
+
+    original_tiebreakers = make_district_tiebreakers()
+    distributed_tiebreakers = make_district_tiebreakers()
 
     extra_events = defaultdict(list)
     over_two_events = defaultdict(list)
@@ -74,6 +120,18 @@ def simulate_district_pre_dcmp(year, district):
             if team_play_count[team_key] <= 2:
                 original_points[team_key] += earned_points
                 distributed_points[team_key] += earned_points
+
+                update_district_tiebreakers(
+                    original_tiebreakers,
+                    team_key,
+                    point_data
+                )
+
+                update_district_tiebreakers(
+                    distributed_tiebreakers,
+                    team_key,
+                    point_data
+                )
             else:
                 non_point_teams.append(team_key)
                 over_two_events[team_key].append(
@@ -113,14 +171,20 @@ def simulate_district_pre_dcmp(year, district):
 
     original_sorted = sorted(
         all_teams,
-        key=lambda team: original_points[team],
-        reverse=True
+        key=lambda team: district_sort_key(
+            team,
+            original_points,
+            original_tiebreakers
+        )
     )
 
     distributed_sorted = sorted(
         all_teams,
-        key=lambda team: distributed_points[team],
-        reverse=True
+        key=lambda team: district_sort_key(
+            team,
+            distributed_points,
+            distributed_tiebreakers
+        )
     )
 
     original_rank = {

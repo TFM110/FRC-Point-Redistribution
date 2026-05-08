@@ -7,6 +7,10 @@ HEADERS = {"X-TBA-Auth-Key": TBA_KEY}
 
 def get(path):
     response = requests.get(BASE + path, headers=HEADERS)
+
+    if response.status_code == 401:
+        raise Exception("401 Unauthorized: Your TBA API key is missing or invalid.")
+
     response.raise_for_status()
     return response.json()
 

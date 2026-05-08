@@ -14,7 +14,8 @@ from utils import (
     calculate_bonus,
     is_regional_event,
     regional_slots,
-    should_skip_district
+    should_skip_district,
+    team_number
 )
 
 
@@ -49,6 +50,45 @@ def get_clean_event_points(event_key):
     }
 
 
+def make_regional_tiebreakers():
+    return defaultdict(lambda: {
+        "best_elim": 0,
+        "best_alliance": 0,
+        "best_qual": 0
+    })
+
+
+def update_regional_tiebreakers(tiebreakers, team_key, point_data):
+    qual = point_data.get("qual_points", 0)
+    elim = point_data.get("elim_points", 0)
+    alliance = point_data.get("alliance_points", 0)
+
+    tiebreakers[team_key]["best_elim"] = max(
+        tiebreakers[team_key]["best_elim"],
+        elim
+    )
+
+    tiebreakers[team_key]["best_alliance"] = max(
+        tiebreakers[team_key]["best_alliance"],
+        alliance
+    )
+
+    tiebreakers[team_key]["best_qual"] = max(
+        tiebreakers[team_key]["best_qual"],
+        qual
+    )
+
+
+def regional_sort_key(team_key, total_points, tiebreakers):
+    return (
+        -total_points[team_key],
+        -tiebreakers[team_key]["best_elim"],
+        -tiebreakers[team_key]["best_alliance"],
+        -tiebreakers[team_key]["best_qual"],
+        team_number(team_key)
+    )
+
+
 def pick_auto_qualifiers(ranked_teams, already_qualified, slots):
     picked = []
 
@@ -77,6 +117,9 @@ def simulate_regionals_for_year(year):
     team_play_count = defaultdict(int)
     original_points = defaultdict(int)
     distributed_points = defaultdict(int)
+
+    original_tiebreakers = make_regional_tiebreakers()
+    distributed_tiebreakers = make_regional_tiebreakers()
 
     extra_events = defaultdict(list)
     non_counting_events = defaultdict(list)
@@ -120,6 +163,18 @@ def simulate_regionals_for_year(year):
             if team_play_count[team_key] <= 2:
                 original_points[team_key] += earned_points
                 distributed_points[team_key] += earned_points
+
+                update_regional_tiebreakers(
+                    original_tiebreakers,
+                    team_key,
+                    point_data
+                )
+
+                update_regional_tiebreakers(
+                    distributed_tiebreakers,
+                    team_key,
+                    point_data
+                )
             else:
                 non_point_teams.append(team_key)
                 non_counting_events[team_key].append(
@@ -162,14 +217,24 @@ def simulate_regionals_for_year(year):
 
         original_event_ranked = sorted(
             regional_teams_at_event,
-            key=lambda team: points[team].get("total", 0),
-            reverse=True
+            key=lambda team: (
+                -points[team].get("total", 0),
+                -points[team].get("elim_points", 0),
+                -points[team].get("alliance_points", 0),
+                -points[team].get("qual_points", 0),
+                team_number(team)
+            )
         )
 
         distributed_event_ranked = sorted(
             regional_teams_at_event,
-            key=lambda team: points[team].get("total", 0) + event_bonus_by_team[team],
-            reverse=True
+            key=lambda team: (
+                -(points[team].get("total", 0) + event_bonus_by_team[team]),
+                -points[team].get("elim_points", 0),
+                -points[team].get("alliance_points", 0),
+                -points[team].get("qual_points", 0),
+                team_number(team)
+            )
         )
 
         slots = regional_slots(event)
@@ -210,14 +275,20 @@ def simulate_regionals_for_year(year):
 
     original_sorted = sorted(
         all_teams,
-        key=lambda team: original_points[team],
-        reverse=True
+        key=lambda team: regional_sort_key(
+            team,
+            original_points,
+            original_tiebreakers
+        )
     )
 
     distributed_sorted = sorted(
         all_teams,
-        key=lambda team: distributed_points[team],
-        reverse=True
+        key=lambda team: regional_sort_key(
+            team,
+            distributed_points,
+            distributed_tiebreakers
+        )
     )
 
     original_rank = {

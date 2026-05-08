@@ -13,6 +13,10 @@ def clean_team_number(team_key):
     return team_key.replace("frc", "")
 
 
+def team_number(team_key):
+    return int(team_key.replace("frc", ""))
+
+
 def calculate_bonus(points_earned, eligible_count):
     if points_earned <= 0 or eligible_count <= 0:
         return 0
