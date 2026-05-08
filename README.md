@@ -27,6 +27,7 @@ The tool exports everything into a formatted Excel workbook.
 - 3rd+ play redistribution
 - District tiebreaker logic
 - Conditional formatting
+- Alphabetically sorted districts
 - Summary tab
 
 ## Regional Analysis
@@ -56,6 +57,7 @@ pip install requests pandas xlsxwriter tqdm python-dotenv
 ```text
 FRC-Point-Redistribution/
 │
+├── __pycache__/                         # ignored by Git
 ├── .env                                 # ignored by Git
 ├── .gitignore
 ├── config.py
@@ -127,17 +129,85 @@ This is recommended for testing.
 
 ---
 
+# Running Multiple Specific Years
+
+Inside `config.py`:
+
+```python
+RUN_SINGLE_YEAR = False
+
+ENABLED_YEARS = {
+    2024,
+    2025,
+    2026
+}
+```
+
+Only those years will run.
+
+---
+
 # Running All Years
 
 Inside `config.py`:
 
 ```python
 RUN_SINGLE_YEAR = False
+
+ENABLED_YEARS = set()
 ```
 
 The script will automatically run:
 - 2009 to current completed FRC season
-- skips 2020 and 2021
+- skips disabled years
+
+---
+
+# Skipping Years
+
+Inside `config.py`:
+
+```python
+DISABLED_YEARS = {
+    2020,
+    2021
+}
+```
+
+---
+
+# District Controls
+
+Districts can also be enabled or disabled.
+
+## Enable Only Specific Districts
+
+```python
+ENABLED_DISTRICTS = {
+    "fit",
+    "fim"
+}
+```
+
+Supported identifiers:
+- abbreviation
+- district key
+- district display name
+
+---
+
+## Disable Districts
+
+```python
+DISABLED_DISTRICTS = {
+    "ont",
+    "ca"
+}
+```
+
+Current default skips:
+- Ontario
+- California
 
 ---
 
@@ -158,6 +228,7 @@ This is because the FRC season usually ends in April.
 The workbook contains:
 - One tab per year
 - Districts placed side-by-side
+- Districts sorted alphabetically
 - Regional redistribution tables for 2026+
 - Summary tab
 - Regional Events tab
@@ -333,9 +404,9 @@ The `.env` file should never be committed.
 ```text
 === Running 2026 ===
 
-  Checking FIRST California...
   Checking FIRST Chesapeake...
   Checking FIRST in Texas...
+  Checking FIRST Indiana...
 
   Running 2026 regional model...
 
