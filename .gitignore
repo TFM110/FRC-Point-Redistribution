@@ -1,0 +1,22 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+
+# VS Code
+.vscode/
+
+# Environment variables
+.env
+
+# Excel output files
+*.xlsx
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db

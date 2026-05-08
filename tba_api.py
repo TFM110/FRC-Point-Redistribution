@@ -36,7 +36,3 @@ def get_event_points(event_key):
 
 def get_district_teams(district_key):
     return get(f"/district/{district_key}/teams")
-
-
-def get_event_teams(event_key):
-    return get(f"/event/{event_key}/teams")

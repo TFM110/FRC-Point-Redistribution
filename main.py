@@ -7,6 +7,8 @@ from config import (
     END_YEAR,
     SKIP_YEARS,
     REGIONAL_START_YEAR,
+    RUN_SINGLE_YEAR,
+    TARGET_YEAR,
     OUTPUT_FILE
 )
 
@@ -17,7 +19,8 @@ from regional_model import simulate_regionals_for_year
 from excel_writer import (
     write_table_block,
     apply_dcmp_formatting,
-    write_summary_sheet
+    write_summary_sheet,
+    write_regional_events_sheet
 )
 
 
@@ -25,6 +28,16 @@ def seconds_to_text(seconds):
     minutes = int(seconds // 60)
     secs = int(seconds % 60)
     return f"{minutes}m {secs}s"
+
+
+def get_years_to_run():
+    if RUN_SINGLE_YEAR:
+        return [TARGET_YEAR]
+
+    return [
+        year for year in range(END_YEAR, START_YEAR - 1, -1)
+        if year not in SKIP_YEARS
+    ]
 
 
 def build_workbook():
@@ -36,13 +49,13 @@ def build_workbook():
     with pd.ExcelWriter(OUTPUT_FILE, engine="xlsxwriter") as writer:
         workbook = writer.book
 
-        years = [
-            year for year in range(END_YEAR, START_YEAR - 1, -1)
-            if year not in SKIP_YEARS
-        ]
+        years = get_years_to_run()
 
-        for year in tqdm(years, desc="Years", unit="year"):
+        for year in years:
             year_start = time.perf_counter()
+
+            tqdm.write("")
+            tqdm.write(f"=== Running {year} ===")
 
             worksheet = workbook.add_worksheet(str(year))
             writer.sheets[str(year)] = worksheet
@@ -59,12 +72,14 @@ def build_workbook():
                 districts,
                 desc=f"{year} districts",
                 unit="district",
-                leave=False
+                leave=True
             ):
                 district_start = time.perf_counter()
 
                 district_key = district["key"]
                 district_name = district.get("display_name", district_key)
+
+                tqdm.write(f"  Checking {district_name}...")
 
                 rows, summary, dcmp_cutoff = simulate_district_pre_dcmp(
                     year,
@@ -72,6 +87,7 @@ def build_workbook():
                 )
 
                 if not rows:
+                    tqdm.write("    Skipped, no redistributed points.")
                     continue
 
                 summary["Runtime"] = seconds_to_text(
@@ -144,24 +160,31 @@ def build_workbook():
                             len(df_regional) + 6,
                             start_col
                         )
+                else:
+                    tqdm.write(f"  No regional redistributed points found for {year}.")
 
             if included_blocks == 0:
                 worksheet.write(0, 0, "No redistributed points found this year.")
 
             worksheet.freeze_panes(3, 0)
 
-            print(f"{year} completed in {seconds_to_text(time.perf_counter() - year_start)}")
+            tqdm.write(f"{year} completed in {seconds_to_text(time.perf_counter() - year_start)}")
 
         write_summary_sheet(
             workbook,
             writer,
-            summary_rows,
+            summary_rows
+        )
+
+        write_regional_events_sheet(
+            workbook,
+            writer,
             regional_event_rows
         )
 
-    print()
-    print(f"Created {OUTPUT_FILE}")
-    print(f"Total runtime: {seconds_to_text(time.perf_counter() - total_start)}")
+    tqdm.write("")
+    tqdm.write(f"Created {OUTPUT_FILE}")
+    tqdm.write(f"Total runtime: {seconds_to_text(time.perf_counter() - total_start)}")
 
 
 if __name__ == "__main__":

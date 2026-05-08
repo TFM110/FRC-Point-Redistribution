@@ -28,7 +28,7 @@ def get_all_district_teams_for_year(year):
 
     for district in tqdm(
         districts,
-        desc=f"{year} regional model: loading district teams",
+        desc=f"{year} loading district teams",
         unit="district",
         leave=False
     ):
@@ -49,8 +49,23 @@ def get_clean_event_points(event_key):
     }
 
 
+def pick_auto_qualifiers(ranked_teams, already_qualified, slots):
+    picked = []
+
+    for team in ranked_teams:
+        if team in already_qualified:
+            continue
+
+        picked.append(team)
+
+        if len(picked) >= slots:
+            break
+
+    return picked
+
+
 def simulate_regionals_for_year(year):
-    print(f"  Running {year} regional model...")
+    tqdm.write(f"  Running {year} regional model...")
 
     district_team_set = get_all_district_teams_for_year(year)
 
@@ -65,6 +80,9 @@ def simulate_regionals_for_year(year):
 
     extra_events = defaultdict(list)
     non_counting_events = defaultdict(list)
+
+    already_original_auto = set()
+    already_distributed_auto = set()
 
     event_rows = []
 
@@ -156,8 +174,20 @@ def simulate_regionals_for_year(year):
 
         slots = regional_slots(event)
 
-        original_auto = original_event_ranked[:slots]
-        distributed_auto = distributed_event_ranked[:slots]
+        original_auto = pick_auto_qualifiers(
+            original_event_ranked,
+            already_original_auto,
+            slots
+        )
+
+        distributed_auto = pick_auto_qualifiers(
+            distributed_event_ranked,
+            already_distributed_auto,
+            slots
+        )
+
+        already_original_auto.update(original_auto)
+        already_distributed_auto.update(distributed_auto)
 
         event_rows.append({
             "Event": event_name,
@@ -232,6 +262,8 @@ def simulate_regionals_for_year(year):
             "DP Rank": distributed_rank[team],
             "Change Points": change_points,
             "Change Rank": change_rank,
+            "Original Auto Qualified": "Yes" if team in already_original_auto else "",
+            "Distributed Auto Qualified": "Yes" if team in already_distributed_auto else "",
             "Event(s)": " | ".join(event_notes)
         })
 
