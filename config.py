@@ -19,7 +19,7 @@ SKIP_YEARS = {2020, 2021}
 
 REGIONAL_START_YEAR = 2026
 
-RUN_SINGLE_YEAR = True
+RUN_SINGLE_YEAR = False
 TARGET_YEAR = 2026
 
 OUTPUT_FILE = "frc_district_and_regional_redistribution.xlsx"
