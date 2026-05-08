@@ -1,5 +1,10 @@
 import math
 
+from config import (
+    DISABLED_DISTRICTS,
+    ENABLED_DISTRICTS
+)
+
 
 def is_demo_team(team_key):
     try:
@@ -32,12 +37,34 @@ def calculate_bonus(points_earned, eligible_count):
 def should_skip_district(district):
     district_key = district.get("key", "").lower()
     district_name = district.get("display_name", "").lower()
+    abbreviation = district.get("abbreviation", "").lower()
 
-    return (
-        "canada" in district_name
-        or "ontario" in district_name
-        or district_key.endswith("ont")
-    )
+    disabled = {
+        item.lower()
+        for item in DISABLED_DISTRICTS
+    }
+
+    enabled = {
+        item.lower()
+        for item in ENABLED_DISTRICTS
+    }
+
+    district_identifiers = {
+        district_key,
+        district_name,
+        abbreviation
+    }
+
+    # If enabled list exists,
+    # only allow matching districts
+    if enabled and not district_identifiers.intersection(enabled):
+        return True
+
+    # Skip disabled districts
+    if district_identifiers.intersection(disabled):
+        return True
+
+    return False
 
 
 def is_dcmp_event(event):
