@@ -10,7 +10,8 @@ from config import (
     REGIONAL_START_YEAR,
     RUN_SINGLE_YEAR,
     TARGET_YEAR,
-    OUTPUT_FILE
+    OUTPUT_FILE,
+    DISTRICT_ORDER
 )
 
 from tba_api import get_districts
@@ -49,6 +50,33 @@ def get_years_to_run():
     return years
 
 
+def get_sorted_districts(year):
+    districts = [
+        district for district in get_districts(year)
+        if not should_skip_district(district)
+    ]
+
+    district_order_lookup = {
+        name: index
+        for index, name in enumerate(DISTRICT_ORDER)
+    }
+
+    districts.sort(
+        key=lambda district: (
+            district_order_lookup.get(
+                district.get("display_name", ""),
+                999
+            ),
+            district.get(
+                "display_name",
+                ""
+            ).lower()
+        )
+    )
+
+    return districts
+
+
 def build_workbook():
     total_start = time.perf_counter()
 
@@ -76,16 +104,7 @@ def build_workbook():
             start_col = 0
             included_blocks = 0
 
-            districts = sorted(
-                [
-                    district for district in get_districts(year)
-                    if not should_skip_district(district)
-                ],
-                key=lambda district: district.get(
-                    "display_name",
-                    district.get("key", "")
-                ).lower()
-            )
+            districts = get_sorted_districts(year)
 
             for district in tqdm(
                 districts,
@@ -96,6 +115,7 @@ def build_workbook():
                 district_start = time.perf_counter()
 
                 district_key = district["key"]
+
                 district_name = district.get(
                     "display_name",
                     district_key
@@ -123,6 +143,7 @@ def build_workbook():
                 )
 
                 summary_rows.append(summary)
+
                 included_blocks += 1
 
                 df = pd.DataFrame(rows)

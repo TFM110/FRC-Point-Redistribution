@@ -20,7 +20,7 @@ else:
 REGIONAL_START_YEAR = 2026
 
 # Faster for testing
-RUN_SINGLE_YEAR = False
+RUN_SINGLE_YEAR = True
 TARGET_YEAR = 2026
 
 # Leave empty to run all valid years
@@ -44,5 +44,23 @@ DISABLED_DISTRICTS = {
     "ont",
     "ca"
 }
+
+# Manual workbook district order
+DISTRICT_ORDER = [
+    "FIRST California",
+    "FIRST Canada - Ontario",
+    "FIRST Chesapeake",
+    "FIRST In Texas",
+    "FIRST Indiana Robotics",
+    "FIRST Israel",
+    "FIRST Mid-Atlantic",
+    "FIRST North Carolina",
+    "FIRST South Carolina",
+    "FIRST Wisconsin",
+    "FIRST in Michigan",
+    "New England",
+    "Pacific Northwest",
+    "Peachtree"
+]
 
 OUTPUT_FILE = "frc_district_and_regional_redistribution.xlsx"
